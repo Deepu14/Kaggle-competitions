@@ -185,8 +185,8 @@ nrow(train_numeric_data)
 test1 <- select(test1,-c(Alley, PoolQC, Fence, MiscFeature, MiscVal,
                          FireplaceQu,Street, Utilities, Condition2,SalePrice))
 classes1 <- lapply((test1),FUN = function(x){is.numeric(x)})
-num_cols <- names(classes[classes == "TRUE"])
-cat_cols <- names(classes[classes == "FALSE"])
+num_cols <- names(classes1[classes1 == "TRUE"])
+cat_cols <- names(classes1[classes1 == "FALSE"])
 test_num_data <- test1[num_cols]
 test_cat_data <- test1[cat_cols]
 imputed_testdata <- missForest(test_num_data)
