@@ -388,3 +388,145 @@ xgb_pred <- predict(xgb,xg_test)
 xgb_pred <- as.data.frame(xgb_pred)
 xgb_pred <- data_frame(Id=test_complete_data$Id,SalePrice=xgb_pred$xgb_pred)
 write.csv(xgb_pred,"xgboost.csv",row.names = FALSE)
+
+
+
+xg_train2 <- model.matrix( ~ LotFrontage+log(LotArea)+OverallQual+YearBuilt+YearRemodAdd+MasVnrArea+BsmtFinSF1+
+                             TotalBsmtSF+log(GrLivArea)+TotRmsAbvGrd+Fireplaces+
+                             GarageYrBlt+GarageCars+GarageArea+WoodDeckSF+OpenPorchSF +MSSubClass+MSZoning+LotShape+LandContour+
+                             LandSlope+Neighborhood+ExterQual+BsmtQual+BsmtExposure+GarageType+Condition1+RoofStyle+
+                             KitchenQual+Exterior1st+RoofMatl+SaleCondition-1,data = train_complete_data)
+xg_test2 <- model.matrix( ~ LotFrontage+log(LotArea)+OverallQual+YearBuilt+YearRemodAdd+MasVnrArea+BsmtFinSF1+
+                            TotalBsmtSF+log(GrLivArea)+TotRmsAbvGrd+Fireplaces+
+                            GarageYrBlt+GarageCars+GarageArea+WoodDeckSF+OpenPorchSF +MSSubClass+MSZoning+LotShape+LandContour+
+                            LandSlope+Neighborhood+ExterQual+BsmtQual+BsmtExposure+GarageType+Condition1+RoofStyle+
+                            KitchenQual+Exterior1st+RoofMatl+SaleCondition-1,data = test_complete_data)
+xgb2 <- xgboost(data = xg_train2,label = (train_complete_data$SalePrice),booster="gbtree",
+                eta=0.1,max_depth=10,nrounds = 200,subsample=0.8,objective="reg:linear",
+                alpha=1,gamma=2,colsample_bytree=0.5,
+                seed=1,eval_metric="rmse")
+xgb2_pred <- predict(xgb2,xg_test2)
+xgb2_pred <- as.data.frame(xgb2_pred)
+xgb2_pred <- data_frame(Id=test_complete_data$Id,SalePrice=xgb2_pred$xgb2_pred)
+write.csv(xgb2_pred,"xgboost2.csv",row.names = FALSE)
+#this gave me RMSE score of 0.14844
+
+library(caret)
+names(getModelInfo())
+modelLookup(model = "xgbLinear")
+modelLookup(model = "xgbTree")
+fitcontrol <- trainControl(method = "repeatedcv",repeats = 3)
+grid <- expand.grid(nrounds=seq(50,200,50),
+                    eta= seq(0.1,0.4,0.1),
+                    lambda=c(0,1),
+                    alpha=c(0,1))
+model_xgb <- train(xg_train2,train_complete_data$SalePrice,method="xgbLinear",trControl = fitcontrol,tuneGrid=grid)
+model_xgb_pred <- predict(model_xgb$finalModel,xg_test2)
+model_xgb_pred <- as.data.frame(model_xgb_pred)
+model_xgb_pred <- data_frame(Id=test_complete_data$Id, SalePrice=model_xgb_pred$model_xgb_pred)
+write.csv(model_xgb_pred,"Model_xgb.csv",row.names = FALSE)
+#this did not improve my model's accuracy
+
+####Now i will use boruta library for feature selection
+library(Boruta)
+boruta <- Boruta(SalePrice ~.,data = train_complete_data,doTrace=2, holdHistory=TRUE)
+boruta
+boruta$finalDecision
+final.boruta <- TentativeRoughFix(boruta)
+getSelectedAttributes(final.boruta,withTentative = FALSE)
+final.boruta.df <- attStats(final.boruta)
+class(final.boruta.df)
+plot(final.boruta)
+selected_attributes <- rownames(final.boruta.df[final.boruta.df$decision == "Confirmed",])
+
+xg_boruta_train <- model.matrix(~ LotFrontage + LotArea +OverallQual+OverallCond+YearBuilt+YearRemodAdd+MasVnrArea+  
+                                BsmtFinSF1+BsmtUnfSF+TotalBsmtSF+X1stFlrSF+X2ndFlrSF+GrLivArea+BsmtFullBath+
+                                FullBath+HalfBath+BedroomAbvGr+KitchenAbvGr+TotRmsAbvGrd+Fireplaces+GarageYrBlt+
+                                GarageCars+GarageArea+WoodDeckSF+OpenPorchSF+ScreenPorch+MSSubClass+MSZoning+    
+                                LotShape+LandContour+LandSlope+Neighborhood+BldgType+HouseStyle+RoofStyle+   
+                                Exterior1st+Exterior2nd+MasVnrType+ExterQual+Foundation+BsmtQual+BsmtExposure+
+                                BsmtFinType1+HeatingQC+CentralAir+KitchenQual+Functional+GarageType+GarageFinish+ 
+                                PavedDrive+SaleCondition-1,data = train_complete_data)
+xg_boruta_test <- model.matrix(~ LotFrontage + LotArea +OverallQual+OverallCond+YearBuilt+YearRemodAdd+MasVnrArea+  
+                                 BsmtFinSF1+BsmtUnfSF+TotalBsmtSF+X1stFlrSF+X2ndFlrSF+GrLivArea+BsmtFullBath+
+                                 FullBath+HalfBath+BedroomAbvGr+KitchenAbvGr+TotRmsAbvGrd+Fireplaces+GarageYrBlt+
+                                 GarageCars+GarageArea+WoodDeckSF+OpenPorchSF+ScreenPorch+MSSubClass+MSZoning+    
+                                 LotShape+LandContour+LandSlope+Neighborhood+BldgType+HouseStyle+RoofStyle+   
+                                 Exterior1st+Exterior2nd+MasVnrType+ExterQual+Foundation+BsmtQual+BsmtExposure+
+                                 BsmtFinType1+HeatingQC+CentralAir+KitchenQual+Functional+GarageType+GarageFinish+ 
+                                 PavedDrive+SaleCondition-1,data = test_complete_data)
+xgb3 <- xgboost(data = xg_boruta_train,label = (train_complete_data$SalePrice),booster="gbtree",
+                eta=0.1,max_depth=10,nrounds = 200,subsample=0.8,objective="reg:linear",
+                alpha=1,gamma=2,colsample_bytree=0.5,
+                seed=1,eval_metric="rmse")
+xgb3_pred <- predict(xgb3,xg_boruta_test)
+xgb3_pred <- as.data.frame(xgb3_pred)
+xgb3_pred <- data_frame(Id=test_complete_data$Id, SalePrice=xgb3_pred$xgb3_pred)
+write.csv(xgb3_pred,"boruta_xgb.csv",row.names = FALSE)
+#This gave me an RMSE score of 0.14503 which is not better than my best score
+
+
+#Now i will use Bayesian Optimization for parameter tuning
+library(rBayesianOptimization)
+data <- select(train_complete_data,-c(Id, SalePrice))
+label <- as.matrix(train_complete_data$SalePrice)
+bayes_train <- list(data=as(as.matrix(data),"dgCMatrix"),label=label)
+#bayes_train <- as.matrix(bayes_train)
+dtrain <- xgb.DMatrix(bayes_train$data,label=bayes_train$label)
+cv_folds <- KFold(target = bayes_train$label,nfolds = 10,stratified = TRUE,
+                  seed=1)
+
+xgb_cv_bayes <- function(eta,max.depth, min_child_weight, subsample,colsample_bytree){
+cv <- xgb.cv(params = list(booster = "gbtree",
+                           eta=eta,
+                           max_depth = max.depth,
+                           min_child_weight = min_child_weight,
+                           subsample = subsample,
+                           colsample_bytree = colsample_bytree,
+                           lambda = 1, alpha = 0,
+                           objective = "reg:linear",
+                           eval_metric = "rmse"),
+               data = dtrain, nround = 200,
+               folds = cv_folds, prediction = TRUE, showsd = TRUE,
+               early_stopping_rounds = 5, maximize = TRUE, verbose = 0)
+  list(Score = -cv$evaluation_log[, min(test_rmse_mean)],
+       Pred = cv$pred,
+       cb.print.evaluation(period = 1))
+}
+
+bayes_result <- BayesianOptimization(xgb_cv_bayes,
+                bounds = list(eta = seq(0.1,0.4,0.1)
+                              , max.depth = seq(3L, 10L,1L)
+                              , min_child_weight = c(3L, 10L)
+                              , subsample = c(0.8, 1)
+                              , colsample_bytree = c(0.5, 1))
+                              , init_grid_dt = NULL, init_points = 10
+                              , n_iter = 5, acq = "ucb",kappa = 3
+                              , eps = 1.5,verbose = TRUE)
+
+xgb_bayesian <- xgboost(data = xg_train2,label = (train_complete_data$SalePrice),booster="gbtree",
+                eta=0.03,max_depth=10,nrounds = 2000,subsample=1,objective="reg:linear",
+                lambda = 1, alpha = 0,colsample_bytree=1.0,min_child_weight=3.0,
+                seed=1,eval_metric="rmse")
+xgb_bayesian_pred <- predict(xgb_bayesian,xg_test2)
+xgb_bayesian_pred<- as.data.frame(xgb_bayesian_pred)
+xgb_bayesian_pred <- data_frame(Id=test_complete_data$Id, SalePrice=xgb_bayesian_pred$xgb_bayesian_pred)
+write.csv(xgb_bayesian_pred,"xgb_bayesian_pred.csv",row.names = FALSE)
+
+
+xgb4 <- xgboost(data = xg_train2,label = (train_complete_data$SalePrice),booster = 'gbtree',
+                seed = 0,
+                colsample_bytree = 0.5,
+                subsample = 0.8,
+                eta = 0.02, 
+                objective = 'reg:linear',
+                nrounds = 1000,
+                max_depth = 12,
+                alpha = 1,
+                gamma = 2,
+                min_child_weight = 1)
+xgb4_pred <- predict(xgb4,xg_test2)
+xgb4_pred <- as.data.frame(xgb4_pred)
+xgb4_pred <- data_frame(Id=test_complete_data$Id, SalePrice = xgb4_pred$xgb4_pred)
+write.csv(xgb4_pred,"xgb4.csv",row.names = FALSE)
+#RMSE Score 0.14764
