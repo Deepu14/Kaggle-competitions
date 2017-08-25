@@ -267,7 +267,7 @@ model1_pred <- predict(model1,test_complete_data,type = "response")
 model1_pred <- as.data.frame(model1_pred)
 model1_pred <- data_frame(Id = test$Id,SalePrice=model1_pred$model1_pred)
 model1_pred$SalePrice[which(model1_pred$SalePrice <0)] <- min(train_complete_data$SalePrice)
-write.csv(model1_pred,"model1.csv")
+write.csv(model1_pred,"model1.csv",row.names = FALSE)
 #Now my RMSE score is 0.169 which is far better than the previous score
 
 #Now i will do log transform for the response variable 
@@ -290,7 +290,7 @@ summary(model2)
 model2_pred <- predict(model2,test_complete_data,type = "response")
 model2_pred <- as.data.frame(model2_pred)
 model2_pred <- data_frame(Id = test$Id,SalePrice=exp(model2_pred$model2_pred))
-write.csv(model2_pred,"model2.csv")
+write.csv(model2_pred,"model2.csv",row.names = FALSE)
 #This gave me an RMSE score of 0.14020(my best score)
 
 #I will also check the distribution of significant variables and perform log transformations on them
@@ -321,7 +321,7 @@ summary(model3)
 model3_pred <- predict(model3,test_complete_data,type = "response")
 model3_pred <- as.data.frame(model3_pred)
 model3_pred <- data.frame(Id = test$Id,SalePrice = exp(model3_pred$model3_pred))
-write.csv(model3_pred,"model3.csv")
+write.csv(model3_pred,"model3.csv",row.names = FALSE)
 #this gave me RMSE score of 0.13904 which is a slight improvement over the previous score 0.14020
 
 #Let's check if the model satisfies linear regression assumptions
@@ -360,7 +360,7 @@ y_pred <- predict(lasso,x_test)
 colnames(y_pred) <- "SalePrice"
 lasso_pred <- as.data.frame(y_pred)
 lasso_pred <- data.frame(Id = test$Id,SalePrice = lasso_pred$SalePrice)
-write.csv(lasso_pred,"lassoreg.csv")
+write.csv(lasso_pred,"lassoreg.csv",row.names = FALSE)
 #this gave me RMSE score of 0.15815 which is not better than my previous model
 
 
@@ -387,4 +387,4 @@ xgb <- xgboost(data = xg_train,label = (train_complete_data$SalePrice),booster="
 xgb_pred <- predict(xgb,xg_test)
 xgb_pred <- as.data.frame(xgb_pred)
 xgb_pred <- data_frame(Id=test_complete_data$Id,SalePrice=xgb_pred$xgb_pred)
-write.csv(xgb_pred,"xgboost.csv")
+write.csv(xgb_pred,"xgboost.csv",row.names = FALSE)
